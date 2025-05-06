@@ -23,6 +23,22 @@
 #endif
 #define __EXECABLE_H
 
+#ifdef __cplusplus
+
+#define __LIBCAP_PROTECT_CPP__   extern "C" {
+#define __LIBCAP_UNPROTECT_CPP__ }
+#define __LIBCAP_CPP_PUBLIC__    extern
+
+#else /* ndef __cplusplus */
+
+#define __LIBCAP_PROTECT_CPP__
+#define __LIBCAP_UNPROTECT_CPP__
+#define __LIBCAP_CPP_PUBLIC__
+
+#endif /* __cplusplus */
+
+__LIBCAP_PROTECT_CPP__
+
 #ifdef __GLIBC__
 /*
  * https://bugzilla.kernel.org/show_bug.cgi?id=219880 So far as I can
@@ -99,6 +115,8 @@ static void __execable_parse_args(int *argc_p, char ***argv_p)
 #define EXECABLE_INITIALIZE do { } while(0)
 #endif /* ndef EXECABLE_INITIALIZE */
 
+__LIBCAP_UNPROTECT_CPP__
+
 /*
  * Note, to avoid any runtime confusion, SO_MAIN is a void static
  * function.
@@ -106,8 +124,8 @@ static void __execable_parse_args(int *argc_p, char ***argv_p)
 #define SO_MAIN							\
 static void __execable_main(int, char**);			\
 __attribute__((visibility ("hidden")))                          \
-void __so_start(void);					        \
-__SO_FORCE_ARG_ALIGNMENT					\
+extern void __so_start(void);				        \
+__LIBCAP_CPP_PUBLIC__ __SO_FORCE_ARG_ALIGNMENT			\
 void __so_start(void)						\
 {								\
     int argc;							\

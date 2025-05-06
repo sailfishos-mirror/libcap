@@ -4,6 +4,8 @@
 
 #include "execable.h"
 
+__LIBCAP_PROTECT_CPP__
+
 static void usage(int status)
 {
     printf("\nusage: libcap.so [--help|--usage|--summary]\n");
@@ -62,3 +64,5 @@ SO_MAIN(int argc, char **argv)
 	usage(1);
     }
 }
+
+__LIBCAP_UNPROTECT_CPP__
