@@ -12,11 +12,18 @@ function die {
     exit 1
 }
 
+# make clean will wipe out the interactive file, so remember to put it back.
+if [[ -f "${HERE}/interactive" ]]; then
+    want_interactive=1
+fi
 pushd ..
-make LIBCSTATIC=yes all test || die "failed to make all test of libcap tree"
+make LIBCSTATIC=yes clean all test || die "failed to make all test of libcap tree"
 make LIBCSTATIC=yes -C progs tcapsh-static || die "failed to make progs/tcapsh-static"
 make -C tests uns_test
 popd
+if [[ "${want_interactive}" -eq 1 ]]; then
+    touch "${HERE}/interactive"
+fi
 
 # Assumes desired make *config (eg. make defconfig) is already done.
 pushd $KBASE
@@ -79,6 +86,7 @@ KERNEL=$KBASE/arch/$(uname -m)/boot/bzImage
 qemu-system-$(uname -m) -m 1024 \
 		   -kernel $KERNEL \
 		   -initrd initramfs.img \
-		   -append "$APPEND" \
+		   -append "$APPEND console=ttyS0" \
 		   -smp sockets=2,dies=1,cores=4 \
-		   -device isa-debug-exit
+		   -device isa-debug-exit \
+		   -nographic -serial mon:stdio
