@@ -304,13 +304,13 @@ int main(int argc, char **argv)
 		case EINVAL:
 		    fprintf(stderr,
 			    "Invalid file '%s' for capability operation\n",
-			    argv[0]);
+			    *arg);
 		    exit(1);
 		case ENODATA:
 		    if (cap_d == NULL) {
 			fprintf(stderr,
 				"File '%s' has no capablity to remove\n",
-				argv[0]);
+				*arg);
 			if (forced) {
 			    break;
 			}
@@ -320,7 +320,7 @@ int main(int argc, char **argv)
 		default:
 		    fprintf(stderr,
 			    "Failed to set capabilities on file '%s': %s\n",
-			    argv[0], strerror(errno));
+			    *arg, strerror(errno));
 		    exit(1);
 		}
 	    }
