@@ -8,6 +8,7 @@
 #ifndef LIBCAP_H
 #define LIBCAP_H
 
+#include <assert.h>
 #include <errno.h>
 #include <sched.h>
 #include <stdio.h>
@@ -152,11 +153,6 @@ struct _cap_struct {
 
 /* launcher magic for cap_free */
 #define CAP_LAUNCH_MAGIC 0xCA91AC
-
-#define magic_of(x)           ((x) ? *(-2 + (const __u32 *) x) : 0)
-#define good_cap_t(x)         (CAP_T_MAGIC   == magic_of(x))
-#define good_cap_iab_t(x)     (CAP_IAB_MAGIC == magic_of(x))
-#define good_cap_launch_t(x)  (CAP_LAUNCH_MAGIC == magic_of(x))
 
 /*
  * kernel API cap set abstraction
@@ -327,5 +323,26 @@ struct cap_launch_s {
     const char *const *argv;
     const char *const *envp;
 };
+
+#define _CAP_STRUCTS_ALIGN \
+        __alignof__(union {struct _cap_struct s; struct cap_iab_s i; struct cap_launch_s l;})
+
+#define _CAP_ALLOC_OFF_TO_MAGIC (_CAP_STRUCTS_ALIGN > 2*sizeof(__u32) ? \
+                                (_CAP_STRUCTS_ALIGN) : (2*sizeof(__u32)))
+
+#define magic_of(x)           ((x) ? \
+			       *(((const __u32 *) x) - _CAP_ALLOC_OFF_TO_MAGIC/sizeof(__u32)) : \
+			       0)
+#define good_cap_t(x)         (CAP_T_MAGIC   == magic_of(x))
+#define good_cap_iab_t(x)     (CAP_IAB_MAGIC == magic_of(x))
+#define good_cap_launch_t(x)  (CAP_LAUNCH_MAGIC == magic_of(x))
+
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#define libcap_static_assert(cond, text) \
+    static_assert(cond, #text)
+#else
+#define libcap_static_assert(cond, text) \
+    typedef char _compilation_time_static_assert_##text [cond ? 1:-1]
+#endif
 
 #endif /* LIBCAP_H */

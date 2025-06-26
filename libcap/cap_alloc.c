@@ -5,6 +5,8 @@
  * capability sets as specified by POSIX.1e (formerlly, POSIX 6).
  */
 
+#include <stddef.h>
+
 #include "libcap.h"
 
 /*
@@ -48,6 +50,10 @@ struct _cap_alloc_s {
 	struct cap_launch_s launcher;
     } u;
 };
+#define CAP_ALLOC_OFF_U offsetof(struct _cap_alloc_s, u)
+
+libcap_static_assert(CAP_ALLOC_OFF_U == _CAP_ALLOC_OFF_TO_MAGIC,
+  Member_u_has_an_unexpected_offset_in_cap_alloc_s);
 
 /*
  * Obtain a blank set of capabilities
@@ -113,7 +119,7 @@ __attribute__((visibility ("hidden"))) char *_libcap_strdup(const char *old)
 	errno = EINVAL;
 	return NULL;
     }
-    len += 1 + 2*sizeof(__u32);
+    len += 1 + CAP_ALLOC_OFF_U;
     if (len < sizeof(struct _cap_alloc_s)) {
 	len = sizeof(struct _cap_alloc_s);
     }
@@ -127,7 +133,7 @@ __attribute__((visibility ("hidden"))) char *_libcap_strdup(const char *old)
     header->magic = CAP_S_MAGIC;
     header->size = (__u32) len;
 
-    raw_data += 2*sizeof(__u32);
+    raw_data += CAP_ALLOC_OFF_U;
     strcpy(raw_data, old);
     return raw_data;
 }
@@ -266,7 +272,7 @@ int cap_free(void *data_p)
 	return -1;
     }
 
-    void *base = (void *) (-2 + (__u32 *) data_p);
+    void *base = (void *) ((char *) data_p - CAP_ALLOC_OFF_U);
     struct _cap_alloc_s *data = base;
     switch (data->magic) {
     case CAP_T_MAGIC:
