@@ -170,7 +170,7 @@ endif
 # the environment for what became known as the sendmail-capabilities
 # bug from 2000:
 #
-#  https://sites.google.com/site/fullycapable/Home/thesendmailcapabilitiesissue
+#  https://sites.google.com/site/fullycapable/thesendmailcapabilitiesissue
 #
 # they are also nullifying the difference between a p-bit and an i-bit.
 #
