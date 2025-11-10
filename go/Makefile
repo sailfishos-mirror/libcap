@@ -49,7 +49,7 @@ $(topdir)/libcap/cap_names.h:
 	$(MAKE) -C $(topdir)/libcap cap_names.h
 
 good-names.go: $(topdir)/libcap/cap_names.h vendor/$(IMPORTDIR)/cap mknames.go
-	CC="$(CC)" $(GO) run -mod=vendor mknames.go --header=$< --textdir=$(topdir)/doc/values | gofmt > $@ || rm -f $@
+	CC="$(BUILD_CC)" GOOS= GOARCH= $(GO) run -mod=vendor mknames.go --header=$< --textdir=$(topdir)/doc/values | gofmt > $@ || rm -f $@
 	diff -u ../cap/names.go $@
 
 PSXGOPACKAGE: vendor/$(IMPORTDIR)/psx ../psx/*.go $(DEPS)
