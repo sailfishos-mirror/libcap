@@ -148,7 +148,19 @@ pass_capsh --caps="cap_setpcap=p" --inh=cap_chown --current
 pass_capsh --strict --caps="cap_chown=p" --inh=cap_chown --current
 
 # change the way the capability is obtained (make it inheritable)
+chmod 0000 ./privileged
 ./setcap cap_setuid,cap_setgid=ei ./privileged
+if [ $? -ne 0 ]; then
+    echo "FAILED to set file capability"
+    exit 1
+fi
+chmod 0755 ./privileged
+ln -s privileged unprivileged
+./setcap -r ./unprivileged
+if [ $? -eq 0 ]; then
+    echo "FAILED by removing a capability from a symlinked file"
+    exit 1
+fi
 
 # Note, the bounding set (edited with --drop) only limits p
 # capabilities, not i's.
@@ -246,7 +258,7 @@ EOF
     pass_capsh --iab='!%cap_chown,^cap_setpcap,cap_setuid'
     fail_capsh --mode=PURE1E --iab='!%cap_chown,^cap_setuid'
 fi
-/bin/rm -f ./privileged
+/bin/rm -f ./privileged ./unprivileged
 
 echo "testing namespaced file caps"
 

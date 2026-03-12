@@ -8,8 +8,13 @@
 #define _DEFAULT_SOURCE
 #endif
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <sys/types.h>
 #include <byteswap.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -322,26 +327,70 @@ int cap_set_file(const char *filename, cap_t cap_d)
     struct vfs_ns_cap_data rawvfscap;
     int sizeofcaps;
     struct stat buf;
+    char fdpath[64];
+    int fd, ret;
 
-    if (lstat(filename, &buf) != 0) {
-	_cap_debug("unable to stat file [%s]", filename);
+    _cap_debug("setting filename capabilities");
+    fd = open(filename, O_RDONLY|O_NOFOLLOW);
+    if (fd >= 0) {
+	ret = cap_set_fd(fd, cap_d);
+	close(fd);
+	return ret;
+    }
+
+    /*
+     * Attempting to set a file capability on a file the process can't
+     * read the content of. This is considered a non-standard use case
+     * and the following (slower) code is complicated because it is
+     * trying to avoid a TOCTOU race condition.
+     */
+
+    fd = open(filename, O_PATH|O_NOFOLLOW);
+    if (fd < 0) {
+	_cap_debug("cannot find file at path [%s]", filename);
+	return -1;
+    }
+    if (fstat(fd, &buf) != 0) {
+	_cap_debug("unable to stat file [%s] descriptor %d",
+		   filename, fd);
+	close(fd);
 	return -1;
     }
     if (S_ISLNK(buf.st_mode) || !S_ISREG(buf.st_mode)) {
-	_cap_debug("file [%s] is not a regular file", filename);
+	_cap_debug("file [%s] descriptor %d for non-regular file",
+		   filename, fd);
+	close(fd);
 	errno = EINVAL;
 	return -1;
     }
 
-    if (cap_d == NULL) {
-	_cap_debug("removing filename capabilities");
-	return removexattr(filename, XATTR_NAME_CAPS);
-    } else if (_fcaps_save(&rawvfscap, cap_d, &sizeofcaps) != 0) {
-	return -1;
-    }
+    /*
+     * While the fd remains open, this named file is locked to the
+     * origin regular file. The size of the fdpath variable is
+     * sufficient to support a 160+ bit number.
+     */
+    if (snprintf(fdpath, sizeof(fdpath), "/proc/self/fd/%d", fd)
+	>= sizeof(fdpath)) {
+	_cap_debug("file descriptor too large %d", fd);
+	errno = EINVAL;
+	ret = -1;
 
-    _cap_debug("setting filename capabilities");
-    return setxattr(filename, XATTR_NAME_CAPS, &rawvfscap, sizeofcaps, 0);
+    } else if (cap_d == NULL) {
+	_cap_debug("dropping file caps on [%s] via [%s]",
+		   filename, fdpath);
+	ret = removexattr(fdpath, XATTR_NAME_CAPS);
+
+    } else if (_fcaps_save(&rawvfscap, cap_d, &sizeofcaps) != 0) {
+	_cap_debug("problem converting cap_d to vfscap format");
+	ret = -1;
+
+    } else {
+	_cap_debug("setting filename capabilities");
+	ret = setxattr(fdpath, XATTR_NAME_CAPS, &rawvfscap,
+		       sizeofcaps, 0);
+    }
+    close(fd);
+    return ret;
 }
 
 /*
