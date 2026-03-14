@@ -167,6 +167,10 @@ sudotest: test ../progs/tcapsh-static b210613 b215283 iaber
 ifeq ($(CGO_REQUIRED),0)
 	./try-launching-cgo
 endif
+ifeq ($(CGO_REQUIRED),0)
+	CC="$(CC)" CGO_ENABLED="1" $(SUDO) $(GO) test -v -mod=vendor $(IMPORTDIR)/cap
+endif
+	CC="$(CC)" CGO_ENABLED="$(CGO_REQUIRED)" $(SUDO) $(GO) test -v -mod=vendor $(IMPORTDIR)/cap
 	$(SUDO) ./try-launching
 ifeq ($(CGO_REQUIRED),0)
 	$(SUDO) ./try-launching-cgo
