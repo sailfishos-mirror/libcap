@@ -309,7 +309,7 @@ int main(int argc, char **argv)
 		case ENODATA:
 		    if (cap_d == NULL) {
 			fprintf(stderr,
-				"File '%s' has no capablity to remove\n",
+				"File '%s' has no capability to remove\n",
 				*arg);
 			if (forced) {
 			    break;
