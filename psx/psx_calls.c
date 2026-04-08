@@ -207,7 +207,7 @@ static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
 #elif defined(__arc__)
 	    __asm__ __volatile__("\npsx_restorer:\n\tmov r8, 139\n\ttrap_s 0\n");
 #else
-#error "unsupported architecture - https://bugzilla.kernel.org/show_bug.cgi?id=219687"
+#error "unsupported architecture - file bug via https://sites.google.com/site/fullycapable"
 #endif /* supported architectures */
 	}
 #endif /* def SA_RESTORER */
