@@ -2,7 +2,7 @@
 #define LIBPSX_H
 
 /*
- * Copyright (c) 2025 Andrew G. Morgan <morgan@kernel.org>
+ * Copyright (c) 2025-6 Andrew G. Morgan <morgan@kernel.org>
  *
  * These header definitions are private to the PSX mechanism. External
  * API references are to be found in <sys/psx_syscall.h>
@@ -11,24 +11,25 @@
  * abstraction, we need our own mutex etc implementation.
  */
 
-typedef unsigned char psx_mutex_t;
-#define _psx_mu_blocked(x)					\
-    __atomic_test_and_set((void *)(x), __ATOMIC_SEQ_CST)
-#define _psx_mu_lock(x)             \
-    while (_psx_mu_blocked(x)) sched_yield()
-#define _psx_mu_unlock(x)           \
-    __atomic_clear((void *)(x), __ATOMIC_SEQ_CST)
-#define _psx_mu_unlock_return(x, y) \
-    do { _psx_mu_unlock(x); return (y); } while (0)
-#define _psx_mu_cond_wait(x)       \
-    do {                           \
-        _psx_mu_unlock(x);         \
-        sched_yield();             \
-        _psx_mu_lock(x);           \
-    } while (0)
+#include <syscall.h>
 
-/* Not reliably defined by *libc so, alias the direct syscall. */
+#include "psx_syscall.h"
+
 #define _psx_gettid() syscall(SYS_gettid)
+#define _psx_sched_yield() syscall(SYS_sched_yield)
+
+typedef long psx_mutex_t;
+#define _psx_mu_lock(pid, x)						\
+    do {								\
+        long was;							\
+	was = __atomic_exchange_n(x, pid, __ATOMIC_SEQ_CST);		\
+	if (was != pid) {						\
+	    break;							\
+	}								\
+	_psx_sched_yield();						\
+    } while (1)
+#define _psx_mu_unlock(x)			\
+    __atomic_store_n(x, 0, __ATOMIC_SEQ_CST)
 
 extern void psx_lock(void);
 extern void psx_unlock(void);

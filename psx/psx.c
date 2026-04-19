@@ -16,7 +16,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <pthread.h>  /* pthread_atfork() */
 #include <signal.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -30,6 +29,7 @@
 
 #include "psx_syscall.h"
 #include "libpsx.h"
+
 
 #ifdef _PSX_DEBUG_MEMORY
 
@@ -95,33 +95,12 @@ static void _psx_cleanup(void);
 #define taskdir_fmt "/proc/%ld/task"
 
 /*
- * Every time we detect a new process, the first thread to recognize
- * this resets some of the psx_tracker fields.
- */
-static void _psx_proc_start(void)
-{
-    long pid = getpid();
-    psx_tracker.pid = pid;
-    if (psx_tracker.pid_path == NULL) {
-	psx_tracker.pid_path = calloc(1, 3*sizeof(pid) + sizeof(taskdir_fmt));
-    }
-    sprintf(psx_tracker.pid_path, taskdir_fmt, pid);
-    psx_tracker.state = _PSX_IDLE;
-    psx_tracker.cmd.active = 0;
-}
-
-static void _psx_new_proc(void)
-{
-    _psx_mu_unlock(&psx_tracker.state_mu);
-    _psx_proc_start();
-}
-
-/*
  * psx_syscall_start initializes the psx subsystem. It is called
  * once and while locked.
  */
 static void psx_syscall_start(void)
 {
+    psx_tracker.initialized = 1;
     /*
      * All sorts of things are assumed by Linux and glibc and/or musl
      * about signal handlers and which can be blocked. Go has its own
@@ -143,12 +122,12 @@ static void psx_syscall_start(void)
      *
      *   https://github.com/golang/go/issues/42494
      */
+    psx_tracker.pid_path =
+	calloc(1, 3*sizeof(psx_tracker.pid) + sizeof(taskdir_fmt));
     psx_tracker.psx_sig = 33;
     psx_tracker.actions = calloc(2, psx_actions_size());
     psx_set_map(256);
     atexit(_psx_cleanup);
-    pthread_atfork(NULL, NULL, _psx_new_proc);
-    psx_tracker.initialized = 1;
 }
 
 /*
@@ -158,10 +137,16 @@ static void psx_syscall_start(void)
  */
 __attribute__((visibility ("hidden"))) void psx_lock(void)
 {
-    _psx_mu_lock(&psx_tracker.state_mu);
-    if (!psx_tracker.initialized) {
-	_psx_proc_start();
-	psx_syscall_start();
+    long pid = getpid();
+    _psx_mu_lock(pid, &psx_tracker.state_mu);
+    if (psx_tracker.pid != pid) {
+	if (!psx_tracker.initialized) {
+	    psx_syscall_start();
+	}
+	psx_tracker.pid = pid;
+	sprintf(psx_tracker.pid_path, taskdir_fmt, pid);
+	psx_tracker.state = _PSX_IDLE;
+	psx_tracker.cmd.active = 0;
     }
 }
 
@@ -174,13 +159,15 @@ __attribute__((visibility ("hidden"))) void psx_unlock(void)
 }
 
 /*
- * psx_cond_wait unlocks and waits to obtain the lock again, allowing
- * other code to run that may require the lock. This is the only way
- * the psx code waits like this.
+ * psx_cond_wait is called locked, it unlocks and waits to obtain the
+ * lock again, allowing other code to run that may require the
+ * lock. This is the only way the psx code waits like this.
  */
 __attribute__((visibility ("hidden"))) void psx_cond_wait(void)
 {
-    _psx_mu_cond_wait(&psx_tracker.state_mu);
+    psx_unlock();
+    _psx_sched_yield();
+    psx_lock();
 }
 
 /*
@@ -193,14 +180,21 @@ static void _psx_cleanup(void) {
      * only done at program exit.
      */
     psx_lock();
-    while (psx_tracker.state != _PSX_IDLE) {
-	psx_cond_wait();
+    for (;;) {
+	switch (psx_tracker.state) {
+	case _PSX_IDLE:
+	    psx_tracker.state = _PSX_EXITING;
+	    free(psx_tracker.actions);
+	    free(psx_tracker.map);
+	    free(psx_tracker.pid_path);
+	    /* FALL THROUGH */
+	case _PSX_EXITING: /* If called twice, just treat it as no-op. */
+	    psx_unlock();
+	    return;
+	default:
+	    psx_cond_wait();
+	}
     }
-    psx_tracker.state = _PSX_EXITING;
-    free(psx_tracker.actions);
-    free(psx_tracker.map);
-    free(psx_tracker.pid_path);
-    psx_unlock();
 }
 
 /*
@@ -346,7 +340,7 @@ long int __psx_syscall(long int syscall_nr, ...) {
 	int fd = open(psx_tracker.pid_path, O_RDONLY | O_DIRECTORY);
 	if (fd == -1) {
 	    psx_lock();
-	    fprintf(stderr, "failed to read %s - aborting\n", psx_tracker.pid_path);
+	    fprintf(stderr, "(%d) failed to read %s - aborting\n", getpid(), psx_tracker.pid_path);
 	    kill(psx_tracker.pid, SIGKILL);
 	}
 
@@ -445,7 +439,7 @@ long int __psx_syscall(long int syscall_nr, ...) {
 	close(fd);
 	if (some) {
 	    verified = 0;
-	    sched_yield();
+	    _psx_sched_yield();
 	} else {
 	    verified++;
 	}
