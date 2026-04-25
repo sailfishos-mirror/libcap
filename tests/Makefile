@@ -78,7 +78,7 @@ run_libcap_psx_test: libcap_psx_test
 	./libcap_psx_test
 
 libcap_psx_test: libcap_psx_test.c $(DEPS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) $(LIBPSXLIB)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $< -o $@ $(LINKEXTRA) $(LIBPSXLIB) $(LIBCAPLIB)
 
 # privileged
 uns_test: uns_test.c $(DEPS)
@@ -100,7 +100,7 @@ libcap_launch_test: libcap_launch_test.c $(DEPS)
 # only links in the pthreads fork support. TODO() we need to change
 # the source to do something interesting with pthreads.
 libcap_psx_launch_test: libcap_launch_test.c $(DEPS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -DWITH_PTHREADS $< -o $@ $(LINKEXTRA) $(LIBCAPLIB) $(LIBPSXLIB)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -DWITH_PTHREADS $< -o $@ $(LINKEXTRA) $(LIBPSXLIB) $(LIBCAPLIB)
 
 
 # This test demonstrates that libpsx is needed to secure multithreaded
