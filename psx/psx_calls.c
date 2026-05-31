@@ -172,6 +172,10 @@ __attribute__((visibility ("hidden"))) void psx_restorer(void);
  * psx_posix_syscall_actor performs the system call on the targeted
  * thread and signals it is no longer pending.
  */
+#if defined(__arm__)
+/* https://github.com/AndrewGMorgan/libcap_mirror/issues/11 */
+__attribute__((target("arm")))
+#endif
 static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
     /* bail early to the next in the chain if not something we recognize */
     psx_lock();
@@ -201,7 +205,7 @@ static void psx_posix_syscall_actor(int signum, siginfo_t *info, void *ignore) {
 #elif defined(__i386__)
 	    __asm__ __volatile__("\npsx_restorer:\n\tmov $173, %eax\n\tint $0x80\n");
 #elif defined(__arm__)
-	    __asm__ __volatile__("\npsx_restorer:\n\tmov r7,#173\n\tswi 0\n");
+	    __asm__ __volatile__("\npsx_restorer:\n\tmov r7,#173\n\tsvc 0\n");
 #elif defined(__powerpc__)
 	    __asm__ __volatile__("\npsx_restorer:\n\tli 0, 172\n\tsc\n");
 #elif defined(__arc__)
