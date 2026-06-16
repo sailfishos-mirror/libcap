@@ -346,7 +346,7 @@ long int __psx_syscall(long int syscall_nr, ...) {
 
 	for (;;) {
 	    char buf[BUF_SIZE];
-	    size_t nread = syscall(SYS_getdents64, fd, buf, BUF_SIZE);
+	    ssize_t nread = syscall(SYS_getdents64, fd, buf, BUF_SIZE);
 	    if (nread == 0) {
 		break;
 	    } else if (nread < 0) {
@@ -354,7 +354,7 @@ long int __psx_syscall(long int syscall_nr, ...) {
 		kill(psx_tracker.pid, SIGKILL);
 	    }
 
-	    size_t offset;
+	    ssize_t offset;
 	    unsigned short reclen;
 	    for (offset = 0; offset < nread; offset += reclen) {
 		/* deal with potential unaligned reads */
