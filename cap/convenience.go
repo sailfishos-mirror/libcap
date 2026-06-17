@@ -3,7 +3,6 @@ package cap
 import (
 	"errors"
 	"fmt"
-	"syscall"
 	"unsafe"
 )
 
@@ -234,7 +233,7 @@ func (sc *syscaller) setUID(uid int) error {
 		return err
 	}
 
-	if _, _, err := sc.w3(syscall.SYS_SETUID, uintptr(uid), 0, 0); err != 0 {
+	if _, _, err := sc.w3(sysSetUIDVariant, uintptr(uid), 0, 0); err != 0 {
 		return err
 	}
 	return nil
@@ -270,7 +269,7 @@ func (sc *syscaller) setGroups(gid int, suppl []int) error {
 		return err
 	}
 
-	if _, _, err := sc.w3(syscall.SYS_SETGID, uintptr(gid), 0, 0); err != 0 {
+	if _, _, err := sc.w3(sysSetGIDVariant, uintptr(gid), 0, 0); err != 0 {
 		return err
 	}
 	if len(suppl) == 0 {
