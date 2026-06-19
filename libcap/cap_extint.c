@@ -167,14 +167,22 @@ cap_t cap_copy_int(const void *cap_ext)
 	for (blk=0; blk<(CAP_SET_SIZE/sizeof(__u32)); ++blk) {
 	    __u32 val = 0;
 
+	    /*
+	     * Each byte is a __u8 which the usual arithmetic conversions
+	     * promote to (signed) int before the shift. Shifting a value
+	     * with bit 7 set left by 24 then overflows int (e.g. a set
+	     * containing CAP_SETFCAP makes the high byte 0x80), which is
+	     * undefined behavior. Widen to __u32 so the shifts are
+	     * performed in unsigned arithmetic and are always well defined.
+	     */
 	    if (bno != blen)
 		val  = export->bytes[bno++][set];
 	    if (bno != blen)
-		val |= export->bytes[bno++][set] << 8;
+		val |= (__u32) export->bytes[bno++][set] << 8;
 	    if (bno != blen)
-		val |= export->bytes[bno++][set] << 16;
+		val |= (__u32) export->bytes[bno++][set] << 16;
 	    if (bno != blen)
-		val |= export->bytes[bno++][set] << 24;
+		val |= (__u32) export->bytes[bno++][set] << 24;
 
 	    cap_d->u[blk].flat[set] = val;
 	}
