@@ -284,7 +284,9 @@ func main() {
 	}
 
 	// Validate some random values stringify consistently between
-	// libcap.cap_to_text() and (*cap.Set).String().
+	// libcap.cap_to_text() and (*cap.Set).String(). This also
+	// validates consistency with libcap.cap_copy_int() and
+	// libcap.cap_copy_ext().
 	mb := cap.MaxBits()
 	sample := cap.NewSet()
 	for c := cap.Value(0); c < 7*mb; c += 3 {
