@@ -45,7 +45,7 @@ static unsigned long pos_uint(const char *text, const char *prefix, int *ok)
 	goto fail;
     }
     value = strtoul(text, &remains, 0);
-    if (*remains || value == 0) {
+    if (*remains || value == 0 || value != (uid_t) value) {
 	goto fail;
     }
     if (ok != NULL) {
