@@ -211,7 +211,7 @@ int cap_fill(cap_t cap_d, cap_flag_t to, cap_flag_t from)
 cap_flag_value_t cap_iab_get_vector(cap_iab_t iab, cap_iab_vector_t vec,
 				    cap_value_t bit)
 {
-    if (!good_cap_iab_t(iab) || bit >= cap_max_bits()) {
+    if (!good_cap_iab_t(iab) || bit < 0 || bit >= cap_max_bits()) {
 	return 0;
     }
 
@@ -246,7 +246,7 @@ cap_flag_value_t cap_iab_get_vector(cap_iab_t iab, cap_iab_vector_t vec,
 int cap_iab_set_vector(cap_iab_t iab, cap_iab_vector_t vec, cap_value_t bit,
 		       cap_flag_value_t raised)
 {
-    if (!good_cap_iab_t(iab) || (raised >> 1) || bit >= cap_max_bits()) {
+    if (!good_cap_iab_t(iab) || (raised >> 1) || bit < 0 || bit >= cap_max_bits()) {
 	errno = EINVAL;
 	return -1;
     }
