@@ -52,7 +52,7 @@ static unsigned long nonneg_uint(const char *text, const char *prefix, int *ok)
 	goto fail;
     }
     value = strtoul(text, &remains, 0);
-    if (*remains) {
+    if (*remains || value != (unsigned) value) {
 	goto fail;
     }
     if (ok != NULL) {
