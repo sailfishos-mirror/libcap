@@ -319,6 +319,9 @@ func FromText(text string) (*Set, error) {
 			}
 		}
 	}
+	if scanner.Err() != nil {
+		return nil, ErrBadText
+	}
 	if chunks == 0 {
 		return nil, ErrBadText
 	}
