@@ -877,7 +877,8 @@ int main(int argc, char *argv[], char *envp[])
 	      }
 	      group_list[g_count] = g->gr_gid;
 	    } else {
-	      group_list[g_count] = strtoul(ptr, NULL, 0);
+	      group_list[g_count] = nonneg_uint(
+		  ptr, "invalid --groups value", NULL);
 	    }
 	  }
 	  free(buf);

@@ -44,6 +44,8 @@ pass_capsh () {
 
 pass_capsh --print
 pass_capsh --current
+fail_capsh --groups=4294967296 --print
+fail_capsh --groups=1junk --print
 
 # Validate that PATH expansion works
 PATH=$(/bin/pwd)/junk:$(/bin/pwd) capsh == == == --modes
