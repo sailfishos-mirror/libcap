@@ -6,7 +6,9 @@ package cap
 import (
 	"fmt"
 	"os"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestFiles(t *testing.T) {
@@ -98,5 +100,71 @@ func TestFileEffectiveInvariant(t *testing.T) {
 	}
 	if _, err := c.packFileCap(); err != nil {
 		t.Fatalf("empty effective set rejected: %v", err)
+	}
+}
+
+func TestSetFdConcurrentMutation(t *testing.T) {
+	f, err := os.CreateTemp(t.TempDir(), "setfd-deadlock-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Keep c invalid so SetFd returns from serialization before any syscall.
+	c := NewSet()
+	if err := c.SetFlag(Effective, true, CHOWN); err != nil {
+		t.Fatal(err)
+	}
+
+	const (
+		readers = 2
+		calls   = 1000
+	)
+	start := make(chan struct{})
+	stop := make(chan struct{})
+	writerDone := make(chan struct{})
+	go func() {
+		defer close(writerDone)
+		<-start
+		for i := 0; ; i++ {
+			select {
+			case <-stop:
+				return
+			default:
+				c.SetNSOwner(i & 1)
+			}
+		}
+	}()
+
+	var wg sync.WaitGroup
+	wg.Add(readers)
+	for i := 0; i < readers; i++ {
+		go func() {
+			defer wg.Done()
+			<-start
+			for j := 0; j < calls; j++ {
+				if err := c.SetFd(f); err != ErrBadSet {
+					t.Errorf("SetFd() = %v, want %v", err, ErrBadSet)
+					return
+				}
+			}
+		}()
+	}
+	readersDone := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(readersDone)
+	}()
+	close(start)
+
+	select {
+	case <-readersDone:
+		close(stop)
+		<-writerDone
+	case <-time.After(5 * time.Second):
+		close(stop)
+		t.Fatal("file capability calls deadlocked with a concurrent Set mutation")
 	}
 }
