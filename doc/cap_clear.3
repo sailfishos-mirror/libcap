@@ -83,6 +83,11 @@ The argument,
 .IR ncap ,
 is used to specify the number of capabilities in the array,
 .IR caps .
+If any value in
+.I caps
+is not a valid capability number, the call fails with
+.B EINVAL
+and the capability state is left unchanged.
 .PP
 .BR cap_fill_flag ()
 fills the to flag of one capability set, with the values in the from

@@ -48,22 +48,32 @@ int cap_set_flag(cap_t cap_d, cap_flag_t set,
      * Is it a known capability?
      */
 
-    if (good_cap_t(cap_d) && no_values > 0 && no_values < __CAP_MAXBITS
+    if (good_cap_t(cap_d) && no_values > 0 && array_values != NULL
 	&& (set >= 0) && (set < NUMBER_OF_CAP_SETS)
 	&& (raise == CAP_SET || raise == CAP_CLEAR) ) {
 	int i;
-	_cap_mu_lock(&cap_d->mutex);
+
+	/*
+	 * Validate every value before modifying anything, so an
+	 * invalid capability is reported rather than skipped and the
+	 * set is never left partially updated.
+	 */
 	for (i=0; i<no_values; ++i) {
 	    if (array_values[i] < 0 || array_values[i] >= __CAP_MAXBITS) {
-		_cap_debug("weird capability (%d) - skipped", array_values[i]);
-	    } else {
-		int value = array_values[i];
+		_cap_debug("invalid capability (%d)", array_values[i]);
+		errno = EINVAL;
+		return -1;
+	    }
+	}
 
-		if (raise == CAP_SET) {
-		    cap_d->raise_cap(value,set);
-		} else {
-		    cap_d->lower_cap(value,set);
-		}
+	_cap_mu_lock(&cap_d->mutex);
+	for (i=0; i<no_values; ++i) {
+	    int value = array_values[i];
+
+	    if (raise == CAP_SET) {
+		cap_d->raise_cap(value,set);
+	    } else {
+		cap_d->lower_cap(value,set);
 	    }
 	}
 	_cap_mu_unlock(&cap_d->mutex);
