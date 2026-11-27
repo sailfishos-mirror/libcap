@@ -797,11 +797,23 @@ static int _cap_iab_set_proc(struct syscaller_s *sc, cap_iab_t iab)
     }
 
 done:
-    (void) cap_set_proc(temp);
+    {
+	int olderrno = errno;
+	int ret2 = _cap_set_proc(sc, temp);
+	if (ret == 0) {
+	    ret = ret2;
+	} else {
+	    errno = olderrno;
+	}
+    }
 
 defer:
-    cap_free(working);
-    cap_free(temp);
+    {
+	int olderrno = errno;
+	cap_free(working);
+	cap_free(temp);
+	errno = olderrno;
+    }
 
     return ret;
 }
