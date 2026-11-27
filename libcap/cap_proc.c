@@ -921,7 +921,7 @@ int cap_launcher_set_mode(cap_launch_t attr, cap_mode_t flavor)
  */
 cap_iab_t cap_launcher_set_iab(cap_launch_t attr, cap_iab_t iab)
 {
-    if (!good_cap_launch_t(attr)) {
+    if (!good_cap_launch_t(attr) || (iab != NULL && !good_cap_iab_t(iab))) {
 	errno = EINVAL;
 	return NULL;
     }
@@ -944,12 +944,20 @@ cap_iab_t cap_launcher_set_iab(cap_launch_t attr, cap_iab_t iab)
  */
 int cap_launcher_set_chroot(cap_launch_t attr, const char *chroot)
 {
+    char *copy = NULL;
     if (!good_cap_launch_t(attr)) {
 	errno = EINVAL;
 	return -1;
     }
+    if (chroot != NULL) {
+	copy = _libcap_strdup(chroot);
+	if (copy == NULL) {
+	    return -1;
+	}
+    }
     _cap_mu_lock(&attr->mutex);
-    attr->chroot = _libcap_strdup(chroot);
+    cap_free(attr->chroot);
+    attr->chroot = copy;
     _cap_mu_unlock(&attr->mutex);
     return 0;
 }

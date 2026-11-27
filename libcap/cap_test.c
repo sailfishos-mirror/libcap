@@ -170,7 +170,22 @@ static int test_alloc(void)
 	goto drop_iab;
     }
 
-    cap_launcher_set_chroot(launcher, "/tmp");
+    if (cap_launcher_set_chroot(launcher, "/tmp") != 0 ||
+	cap_launcher_set_chroot(launcher, "/var") != 0 ||
+	cap_launcher_set_chroot(launcher, NULL) != 0 ||
+	cap_launcher_set_chroot(launcher, "/tmp") != 0) {
+	printf("failed to update/clear launcher chroot\n");
+	fflush(stdout);
+	retval = -1;
+	goto drop_launcher;
+    }
+    errno = 0;
+    if (cap_launcher_set_iab(launcher, (cap_iab_t) c) != NULL || errno != EINVAL) {
+	printf("launcher accepted invalid cap_iab_t\n");
+	fflush(stdout);
+	retval = -1;
+	goto drop_launcher;
+    }
     if (cap_launcher_set_iab(launcher, iab) != NULL) {
 	printf("unable to replace iab in launcher\n");
 	fflush(stdout);
